@@ -1,133 +1,61 @@
-// LoansOverview.tsx - Fixed version with working buttons
-import { Card, CardContent } from "@/components/ui/card";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Plus, Eye, Loader2 } from "lucide-react";
-import { useAaveData } from "@/hooks/useAaveData";
-import { useAaveTransactions } from "@/hooks/useAaveTransactions";
-import { SUPPORTED_ASSETS } from "@/lib/aave/config";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Eye, TrendingUp, AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 
-interface LoansOverviewProps {
-  onTabChange?: (tab: string) => void;
-}
-
-const LoansOverview = ({ onTabChange }: LoansOverviewProps) => {
-  const { 
-    aaveBalances, 
-    totalSupplied, 
-    totalBorrowed, 
-    healthFactor, 
-    isLoading 
-  } = useAaveData();
-
-  const { withdraw, supply, borrow, withdrawState, supplyState, borrowState } = useAaveTransactions();
-  const [actionLoading, setActionLoading] = useState<{type: string, asset: string} | null>(null);
-
-  // Create positions from real Aave data
-  const activePositions = Object.entries(aaveBalances)
-    .filter(([symbol, data]) => data.supplyBalance > 0 || data.borrowBalance > 0)
-    .map(([symbol, data]) => {
-      const asset = SUPPORTED_ASSETS[symbol as keyof typeof SUPPORTED_ASSETS];
-      const borrowAmountNum = data.borrowBalance * data.price;
-      
-      return {
-        id: symbol,
-        collateralAsset: symbol,
-        collateralAmount: data.supplyBalance.toFixed(4),
-        collateralValue: data.supplyBalance * data.price,
-        borrowAmount: borrowAmountNum,
-        borrowAmountDisplay: borrowAmountNum.toLocaleString(),
-        supplyRate: symbol === 'ETH' ? "2.1%" : symbol === 'WBTC' ? "1.8%" : "3.2%",
-        borrowRate: borrowAmountNum > 0 ? "5.2%" : "0%",
-        status: "active",
-        asset: asset,
-        supplyBalance: data.supplyBalance,
-        borrowBalance: data.borrowBalance,
-        price: data.price
-      };
-    });
-
-  const getHealthFactorBadge = (healthFactor: number) => {
-    if (healthFactor >= 1.5) return <Badge variant="secondary" className="text-green-600 bg-green-50">Healthy</Badge>;
-    if (healthFactor >= 1.2) return <Badge variant="secondary" className="text-yellow-600 bg-yellow-50">Warning</Badge>;
-    return <Badge variant="destructive">At Risk</Badge>;
-  };
-
-  // ✅ BUTTON HANDLERS - Missing in original
-  const handleSupplyMore = (symbol: string) => {
-    console.log(`🚀 Supply More ${symbol} clicked`);
-    // Navigate to portfolio tab with specific asset
-    onTabChange?.('portfolio');
-    toast.info(`Navigate to Portfolio to supply more ${symbol}`);
-  };
-
-  const handleWithdraw = async (symbol: string, amount: number) => {
-    console.log(`🚀 Withdraw ${amount} ${symbol} clicked`);
-    setActionLoading({type: 'withdraw', asset: symbol});
-    
-    try {
-      // Use 25% of supply balance for quick withdraw
-      const withdrawAmount = Math.min(amount * 0.25, amount);
-      await withdraw(symbol, withdrawAmount);
-      toast.success(`Successfully withdrew ${withdrawAmount.toFixed(6)} ${symbol}`);
-    } catch (error) {
-      console.error('Withdraw error:', error);
-      toast.error(`Failed to withdraw ${symbol}`);
-    } finally {
-      setActionLoading(null);
+const LoansOverview = () => {
+  const activeLoans = [
+    {
+      id: "TL-ABC123DEF",
+      collateralAsset: "BTC",
+      collateralAmount: "1.5",
+      collateralValue: 45000,
+      borrowAsset: "USDC",
+      borrowAmount: "25000",
+      healthFactor: 1.85,
+      apy: "7.2%",
+      status: "healthy",
+      nextPayment: "2024-09-06",
+      paymentAmount: 2250.50
+    },
+    {
+      id: "TL-DEF456GHI", 
+      collateralAsset: "ETH",
+      collateralAmount: "10.2",
+      collateralValue: 28560,
+      borrowAsset: "USDC",
+      borrowAmount: "18000",
+      healthFactor: 1.62,
+      apy: "6.8%",
+      status: "healthy",
+      nextPayment: "2024-09-12",
+      paymentAmount: 1530.00
     }
+  ];
+
+  const getHealthFactorColor = (healthFactor: number) => {
+    if (healthFactor >= 1.5) return "text-green-600";
+    if (healthFactor >= 1.2) return "text-yellow-600";
+    return "text-red-600";
   };
 
-  const handleBorrow = (symbol: string) => {
-    console.log(`🚀 Borrow against ${symbol} clicked`);
-    // Navigate to borrow tab
-    onTabChange?.('borrow');
-    toast.info(`Navigate to Borrow section to borrow against your ${symbol}`);
+  const getHealthFactorBadge = (status: string) => {
+    return <Badge variant="secondary" className="text-green-600 bg-green-50">Healthy</Badge>;
   };
 
-  const handleRepay = (symbol: string) => {
-    console.log(`🚀 Repay ${symbol} loan clicked`);
-    // Navigate to portfolio or borrow tab for repay
-    onTabChange?.('portfolio');
-    toast.info(`Navigate to Portfolio to repay your ${symbol} loan`);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading Loans Data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (activePositions.length === 0) {
+  if (activeLoans.length === 0) {
     return (
       <div className="text-center py-12">
-        <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-        <h3 className="text-lg font-semibold mb-2">No Active Positions</h3>
-        <p className="text-muted-foreground mb-6">
-          Start by supplying collateral or borrowing assets.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Button 
-            variant="outline"
-            onClick={() => onTabChange?.('portfolio')}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Supply Assets
-          </Button>
-          <Button
-            onClick={() => onTabChange?.('borrow')}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Borrow Assets
-          </Button>
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <TrendingUp className="w-8 h-8 text-muted-foreground" />
         </div>
+        <h3 className="text-xl font-semibold mb-2">No Active Loans</h3>
+        <p className="text-muted-foreground mb-6">
+          You don't have any active loans yet. Start by creating your first loan.
+        </p>
+        <Button>Create New Loan</Button>
       </div>
     );
   }
@@ -136,124 +64,102 @@ const LoansOverview = ({ onTabChange }: LoansOverviewProps) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Your Tartr Positions</h2>
-          <p className="text-muted-foreground">Monitor and manage your DeFi positions on Tartr</p>
+          <h2 className="text-2xl font-bold">Your Active Loans</h2>
+          <p className="text-muted-foreground">Monitor and manage your borrowing positions</p>
         </div>
-        <Button onClick={() => onTabChange?.('borrow')}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Position
-        </Button>
+        <Button>Create New Loan</Button>
       </div>
 
       <div className="grid gap-4">
-        {activePositions.map((position) => (
-          <Card key={position.id} className="border border-border">
+        {activeLoans.map((loan) => (
+          <Card key={loan.id} className="border border-border">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="font-bold text-primary">{position.asset?.icon || position.collateralAsset.charAt(0)}</span>
+                  <div className="text-lg font-semibold">
+                    {loan.collateralAsset} → {loan.borrowAsset}
                   </div>
-                  <div>
-                    <div className="text-lg font-semibold">
-                      {position.collateralAsset} Position
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Tartr • {position.status === 'active' ? 'Active' : 'Inactive'}
-                    </div>
-                  </div>
-                  {healthFactor > 0 && getHealthFactorBadge(healthFactor)}
+                  {getHealthFactorBadge(loan.status)}
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => onTabChange?.('portfolio')}>
-                    <Eye className="w-4 h-4 mr-1" />
-                    Manage
-                  </Button>
+                  <Link to={`/platform/loan/${loan.id}`}>
+                    <Button variant="outline" size="sm">
+                      <Eye className="w-4 h-4 mr-1" />
+                      View Details
+                    </Button>
+                  </Link>
                 </div>
               </div>
               
-              <div className="grid md:grid-cols-4 gap-4 text-sm">
+              <div className="grid md:grid-cols-5 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground mb-1">Supplied</p>
-                  <p className="font-semibold">{position.collateralAmount} {position.collateralAsset}</p>
-                  <p className="text-xs text-muted-foreground">${position.collateralValue.toFixed(2)}</p>
+                  <p className="text-muted-foreground mb-1">Loan Amount</p>
+                  <p className="font-semibold">${parseFloat(loan.borrowAmount).toLocaleString()} {loan.borrowAsset}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground mb-1">Borrowed</p>
-                  <p className="font-semibold">
-                    {position.borrowAmount > 0 ? `$${position.borrowAmountDisplay}` : 'None'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {position.borrowAmount > 0 ? `${position.borrowRate} APY` : 'No debt'}
-                  </p>
+                  <p className="text-muted-foreground mb-1">Collateral</p>
+                  <p className="font-semibold">{loan.collateralAmount} {loan.collateralAsset}</p>
+                  <p className="text-xs text-muted-foreground">${loan.collateralValue.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground mb-1">Supply APY</p>
-                  <p className="font-semibold text-green-600">{position.supplyRate}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground mb-1">Net APY</p>
-                  <p className="font-semibold text-blue-600">
-                    {position.borrowAmount > 0 ? '−5.3%' : position.supplyRate}
+                  <p className="text-muted-foreground mb-1">Health Factor</p>
+                  <p className={`font-semibold ${getHealthFactorColor(loan.healthFactor)}`}>
+                    {loan.healthFactor}
                   </p>
                 </div>
-              </div>
-
-              {/* ✅ FIXED: Quick Actions with working click handlers */}
-              <div className="flex gap-2 mt-4 pt-4 border-t">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => handleSupplyMore(position.collateralAsset)}
-                  disabled={actionLoading?.type === 'supply' && actionLoading?.asset === position.collateralAsset}
-                >
-                  {actionLoading?.type === 'supply' && actionLoading?.asset === position.collateralAsset ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4 mr-1" />
-                  )}
-                  Supply More
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => handleWithdraw(position.collateralAsset, position.supplyBalance)}
-                  disabled={actionLoading?.type === 'withdraw' && actionLoading?.asset === position.collateralAsset || position.supplyBalance === 0}
-                >
-                  {actionLoading?.type === 'withdraw' && actionLoading?.asset === position.collateralAsset ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                  )}
-                  Withdraw
-                </Button>
-                
-                {position.borrowAmount > 0 ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleRepay(position.collateralAsset)}
-                  >
-                    Repay
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleBorrow(position.collateralAsset)}
-                  >
-                    Borrow
-                  </Button>
-                )}
+                <div>
+                  <p className="text-muted-foreground mb-1">Interest Rate</p>
+                  <p className="font-semibold">{loan.apy}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground mb-1">Next Payment</p>
+                  <p className="font-semibold">${loan.paymentAmount.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{loan.nextPayment}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid md:grid-cols-3 gap-4 mt-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Borrowed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              ${activeLoans.reduce((sum, loan) => sum + parseFloat(loan.borrowAmount), 0).toLocaleString()} USDC
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Collateral</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              ${activeLoans.reduce((sum, loan) => sum + loan.collateralValue, 0).toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Health Factor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${getHealthFactorColor(1.73)}`}>
+              1.73
+            </p>
+            <div className="flex items-center space-x-1 text-sm">
+              <AlertTriangle className="w-3 h-3 text-green-600" />
+              <span className="text-green-600">Healthy</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

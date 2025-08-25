@@ -1,19 +1,7 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ConnectButton, useActiveAccount } from "thirdweb/react";
-import { client, wallets } from "@/lib/thirdweb";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const Header = () => {
-  const navigate = useNavigate();
-  const account = useActiveAccount();
-
-  // Redirect to platform when wallet connects
-  useEffect(() => {
-    if (account) {
-      navigate('/platform');
-    }
-  }, [account, navigate]);
-
   return (
     <header className="border-b border-border bg-background">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -40,22 +28,11 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center">
-         <ConnectButton
-          client={client}
-          wallets={wallets}
-          connectModal={{ size: "compact" }}
-          connectButton={{
-            style: {
-              backgroundColor: "#000000",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "12px",
-              padding: "6px 10px",
-              fontSize: "18px",
-              fontWeight: "500",
-            }
-          }}
-          />
+          <Link to="/platform">
+            <Button variant="outline" size="sm" className="text-sm px-3 py-2 md:text-base md:px-4 md:py-2">
+              Connect Wallet
+            </Button>
+          </Link>
         </div>
       </div>
     </header>
